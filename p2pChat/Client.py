@@ -10,15 +10,19 @@ class Clinet:
         self.serverTCP.connect((self.ip, self.port))
 
     def getinfo(self):
-        name = input('user name :')
-        password = input('password')
-        self.serverTCP.send(bytes(name, 'utf-8'))
-        self.serverTCP.send(bytes(password, 'utf-8'))
+        print(self.serverTCP.recv(1024).decode('utf-8'))
+        self.serverTCP.send(bytes(input(), 'utf-8'))
         while True:
-            m = input('write your message')
-            message = self.serverTCP.send(bytes(m, 'utf-8'))
-            if m == 'LOG OUT':
+            name = input('user name :')
+            password = input('password :')
+            self.serverTCP.send(bytes(name, 'utf-8'))
+            self.serverTCP.send(bytes(password, 'utf-8'))
+            respond = self.serverTCP.recv(1024).decode('utf-8')
+            if respond == 'pass':
+                print(respond)
                 break
+            else:
+                print(respond)
 
 def main():
     clinet = Clinet()
