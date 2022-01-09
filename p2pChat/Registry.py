@@ -1,5 +1,6 @@
 import socket
-
+import sys
+import _thread
 
 class Server:
     def __init__(self):
@@ -13,7 +14,7 @@ class Server:
         # creating the TCP socket
         self.serverTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serverTCP.bind((self.ipUDP, 1234))
-        self.TCPConnection()
+
 
     def readUsers(self):
         file = open('users.txt', 'r')
@@ -55,40 +56,65 @@ class Server:
                 password = connection.recv(1024).decode('utf-8')
                 for i in self.clients:
                     if i['name'] == name and i['password'] == password:
-                        self.onlineClients.append({'name': name, 'password': password, 'address': address})
                         found = True
                         break
                 if found:
-                    connection.send(bytes('pass', 'utf-8'))
-                    print('DONE')
-                    break
+                    here=False
+                    for i in self.onlineClients:
+                        if i['name'] == name:
+                            connection.send(bytes('already online on another machine', 'utf-8'))
+                            here =True
+                            break
+                    if not here:
+                        self.onlineClients.append({'name': name, 'password': password, 'address': address})
+                        connection.send(bytes('pass', 'utf-8'))
+                        print('DONE')
+                        break
                 else:
                     connection.send(bytes('user name or password is wrong !!', 'utf-8'))
         connection.close()
-        self.UDPConnection()
+        # pass the index of the client in the online clients list
+        self.UDPConnection(self.onlineClients.index(next(filter(lambda n: n.get('name') == name, self.onlineClients))))
 
-    def UDPConnection(self):
+    def UDPConnection(self,clientLocation):
         msgFromServer = "Hello UDP Client"
         bytesToSend = str.encode(msgFromServer)
         bytesAddressPair = self.serverUDP.recvfrom(self.bufferSize)
         message = bytesAddressPair[0]
         address = bytesAddressPair[1]
+        self.onlineClients[clientLocation]['address']=address
         clientMsg = "Message from Client:{}".format(message)
         clientIP = "Client IP Address:{}".format(address)
         print(clientMsg)
         print(clientIP)
         self.serverUDP.sendto(bytesToSend, address)
+        self.peers(clientLocation)
+
+    def peers(self,client):
+        while True:
+            if len(self.onlineClients) > 1:
+                self.serverUDP.sendto(b'other clients arrive send the name you want to chat with ',
+                                      self.onlineClients[client]['address'])
+                print(self.serverUDP.recvfrom(self.bufferSize))
+                self.serverUDP.sendto(b'other clients arrive send the name you want to chat with ',
+                                      self.onlineClients[client]['address'])
+                break
 
     def TCPConnection(self):
         self.serverTCP.listen(5)
-        while True:
-            client, address = self.serverTCP.accept()
-            print('accepted')
-            self.login_threaded(client, address)
+        client, address = self.serverTCP.accept()
+        print('accepted')
+        _thread.start_new_thread(self.login_threaded, (client,address))
+        print(self.onlineClients)
 
 
 def main():
     server = Server()
+    while True:
+        server.TCPConnection()
+
+
+
 
 
 main()
