@@ -22,6 +22,7 @@ class Client:
                 break
             else:
                 print(respond)
+        self.connectToPeer()
     def TCPConnection(self):
         # creating the TCP socket
         self.serverTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -38,19 +39,19 @@ class Client:
         self.connectToPeer()
 
     def connectToPeer (self):
-        # while True:
+        #while True:
             print('waiting for other Users..')
-            msgFromServer = self.serverUDP.recvfrom(self.bufferSize)
+            msgFromServer = self.serverTCP.recv(self.bufferSize).decode('utf-8')
             print(msgFromServer)
             name=input('search >>')
-            self.serverUDP.sendto(bytes(name, 'utf-8'), (self.ip, self.port))
-            msgFromServer = self.serverUDP.recvfrom(self.bufferSize)
+            self.serverTCP.send(bytes(name, 'utf-8'))
+            msgFromServer = self.serverTCP.recv(self.bufferSize)
             print(msgFromServer)
 
 
 def main():
     client = Client()
-    client.UDPConnection()
+    #client.UDPConnection()
 
 
 main()

@@ -72,12 +72,14 @@ class Server:
                         break
                 else:
                     connection.send(bytes('user name or password is wrong !!', 'utf-8'))
-        connection.close()
+        self.peers(connection)
+        #connection.close()
         # pass the index of the client in the online clients list
-        self.UDPConnection(self.onlineClients.index(next(filter(lambda n: n.get('name') == name, self.onlineClients))))
+        #self.UDPConnection(self.onlineClients.index(next(filter(lambda n: n.get('name') == name, self.onlineClients))))
+        #print(self.onlineClients[self.onlineClients.index(next(filter(lambda n: n.get('name') == name, self.onlineClients)))])
 
     def UDPConnection(self,clientLocation):
-        msgFromServer = "Hello UDP Client"
+        msgFromServer = "Hello UDP Client "+self.onlineClients[clientLocation]['name']
         bytesToSend = str.encode(msgFromServer)
         bytesAddressPair = self.serverUDP.recvfrom(self.bufferSize)
         message = bytesAddressPair[0]
@@ -92,13 +94,19 @@ class Server:
 
     def peers(self,client):
         while True:
+            found=False
             if len(self.onlineClients) > 1:
-                self.serverUDP.sendto(b'other clients arrive send the name you want to chat with ',
-                                      self.onlineClients[client]['address'])
-                print(self.serverUDP.recvfrom(self.bufferSize))
-                self.serverUDP.sendto(b'other clients arrive send the name you want to chat with ',
-                                      self.onlineClients[client]['address'])
+                client.send(b'other clients arrive send the name you want to chat with ')
+                name=client.recv(1024).decode('utf-8')
+                for i in self.onlineClients:
+                    if name == i['name']:
+                        found=True
+                if found:
+                    client.send(b'found')
+                else:
+                    client.send(b'not found')
                 break
+
 
     def TCPConnection(self):
         self.serverTCP.listen(5)
