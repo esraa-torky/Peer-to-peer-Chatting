@@ -34,7 +34,6 @@ class Client(Thread):
         self.serverTCP.send(bytes(type, 'utf-8'))
 
     def sendLogInData(self,username,password):
-        print('here')
         self.serverTCP.send(bytes(username, 'utf-8'))
         self.serverTCP.send(bytes(password, 'utf-8'))
         respond = self.serverTCP.recv(self.bufferSize).decode('utf-8')
@@ -59,10 +58,10 @@ class Client(Thread):
         msgFromServer = json.loads(msgFromServer.decode())
         return msgFromServer
 
-    def sendHalloToUDP(self):
-        msgFromClient = "Hello UDP Server"
-        bytesToSend = str.encode(msgFromClient)
-        self.serverUDP.sendto(bytesToSend, (self.ip, self.port))
+    # def sendHalloToUDP(self):
+    #     msgFromClient = "Hello UDP Server"
+    #     bytesToSend = str.encode(msgFromClient)
+    #     self.serverUDP.sendto(bytesToSend, (self.ip, self.port))
 
     def createChatConnection(self,address):
         clientTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -80,12 +79,15 @@ class Client(Thread):
             m=name1+': '+self.reciverTCP.recv(self.bufferSize).decode()
             if m== 'LOGOUT':
                 print(m)
-                break
+                return'LOGOUT'
             else:
                 print(m)
             mesge=input(name2+': ')
             if mesge == 'LOGOUT':
                 self.reciverTCP.send(bytes(mesge,'utf-8'))
+                self.reciverTCP.close()
+                self.serverTCP.send(bytes('LOGOUT','utf-8'))
+                self.serverTCP.recv(self.bufferSize)
                 break
             else:
                 self.reciverTCP.send(bytes(mesge, 'utf-8'))
@@ -96,6 +98,9 @@ class Client(Thread):
             self.saveMessages(name1+'_'+name2, name1+': '+mesge)
             if mesge == 'LOGOUT':
                 self.client.send(bytes(mesge, 'utf-8'))
+                self.client.close()
+                self.serverTCP.send(bytes('LOGOUT','utf-8'))
+                self.serverTCP.recv(self.bufferSize)
                 break
             else:
                 self.client.send(bytes(mesge, 'utf-8'))
@@ -103,7 +108,7 @@ class Client(Thread):
             self.saveMessages(name1+'_'+name2, m)
             if m=='LOGOUT':
                 print(m)
-                break
+                return 'LOGOUT'
             else:
                 print(m)
 
@@ -175,8 +180,6 @@ class GUI(Frame):
         Label(waitOrSearch_screen,text="").pack()
         # create a register button
         Button(waitOrSearch_screen,text="waite", height="2", width="30",command=lambda:[self.wait(),waitOrSearch_screen.destroy()]).pack()
-        Button(waitOrSearch_screen, text="send hallo to UDP ", height="2", width="30",
-               command=self.client.sendHalloToUDP).pack()
 
     def waiting(self):
         self.waiting_screen = Toplevel(self.parent)
@@ -185,8 +188,6 @@ class GUI(Frame):
         Label(self.waiting_screen, text="waiting for other users to join the app").pack()
         Button(self.waiting_screen, text="check", height="2", width="30",
                command=self.waitForUsers).pack()
-        Button(self.waiting_screen, text="send hallo to UDP ", height="2", width="30",
-               command=self.client.sendHalloToUDP).pack()
 
     def wait(self):
         rcv = threading.Thread(target=self.acceptRequist)
@@ -199,8 +200,6 @@ class GUI(Frame):
         Label(self.wait_screen, text="").pack()
         Label(self.wait_screen, text="or you can go and search").pack()
         Button(self.wait_screen, text="search", width=10, height=1,command=lambda: [self.waitOrSearch(), self.wait_screen.destroy()]).pack()
-        Button(self.wait_screen, text="send hallo to UDP ", height="2", width="30",
-               command=self.client.sendHalloToUDP).pack()
 
     def search(self):
         self.client.searchOrWait('OK')
@@ -215,192 +214,6 @@ class GUI(Frame):
         username_login_entry.pack()
         Label(self.search_screen, text="").pack()
         Button(self.search_screen, text="search", width=10, height=1, command=lambda: [self.searchRequist(name.get())]).pack()
-        Button(self.search_screen, text="send hallo to UDP ", height="2", width="30",
-               command=self.client.sendHalloToUDP).pack()
-
-    # def chatReciver(self,name):
-    #     rcv = threading.Thread(target=self.receiveR())
-    #     rcv.start()
-    #     self.Window = Toplevel(self.parent)
-    #     self.Window.title("CHAT ROOM")
-    #     self.Window.resizable(width=False,
-    #                           height=False)
-    #     self.Window.configure(width=470,
-    #                           height=550,
-    #                           bg='gray91')
-    #     self.labelHead = Label(self.Window,
-    #                            bg='#856ff8',
-    #                            fg='gray91',
-    #                            text=name,
-    #                            font="Helvetica 13 bold",
-    #                            pady=5)
-    #
-    #     self.labelHead.place(relwidth=1)
-    #     self.line = Label(self.Window,
-    #                       width=450,
-    #                       bg='#856ff8')
-    #
-    #     self.line.place(relwidth=1,
-    #                     rely=0.07,
-    #                     relheight=0.012)
-    #
-    #     self.textCons = Text(self.Window,
-    #                          width=20,
-    #                          height=2,
-    #                          bg='gray91',
-    #                          fg="black",
-    #                          font="Helvetica 14",
-    #                          padx=5,
-    #                          pady=5)
-    #
-    #     self.textCons.place(relheight=0.745,
-    #                         relwidth=1,
-    #                         rely=0.08)
-    #
-    #     self.labelBottom = Label(self.Window,
-    #                              bg='#856ff8',
-    #                              height=80)
-    #
-    #     self.labelBottom.place(relwidth=1,
-    #                            rely=0.825)
-    #
-    #     self.entryMsg = Entry(self.labelBottom,
-    #                           bg='#856ff8',
-    #                           fg='gray91',
-    #                           font="Helvetica 13")
-    #
-    #     self.entryMsg.place(relwidth=0.74,
-    #                         relheight=0.06,
-    #                         rely=0.008,
-    #                         relx=0.011)
-    #
-    #     self.entryMsg.focus()
-    #
-    #     self.buttonMsg = Button(self.labelBottom,
-    #                             text="Send",
-    #                             font="Helvetica 10 bold",
-    #                             width=20,
-    #                             bg='#856ff8',
-    #                             command=lambda: self.sendButton(self.entryMsg.get()))
-    #
-    #     self.buttonMsg.place(relx=0.77,
-    #                          rely=0.008,
-    #                          relheight=0.06,
-    #                          relwidth=0.22)
-    #
-    #     self.textCons.config(cursor="arrow")
-    #
-    #     # create a scroll bar
-    #     scrollbar = Scrollbar(self.textCons)
-    #
-    #     # place the scroll bar
-    #     # into the gui window
-    #     scrollbar.place(relheight=1,
-    #                     relx=0.974)
-    #
-    #     scrollbar.config(command=self.textCons.yview)
-    #
-    #     self.textCons.config(state=DISABLED)
-    #
-    # def chatClient(self,name):
-    #     # to show chat window
-    #     self.Window =Toplevel(self.parent)
-    #     self.Window.title("CHAT ROOM")
-    #     self.Window.resizable(width=False,
-    #                           height=False)
-    #     self.Window.configure(width=470,
-    #                           height=550,
-    #                           bg='gray91')
-    #     self.labelHead = Label(self.Window,
-    #                            bg='#856ff8',
-    #                            fg='gray91',
-    #                            text=name,
-    #                            font="Helvetica 13 bold",
-    #                            pady=5)
-    #
-    #     self.labelHead.place(relwidth=1)
-    #     self.line = Label(self.Window,
-    #                       width=450,
-    #                       bg='#856ff8')
-    #
-    #     self.line.place(relwidth=1,
-    #                     rely=0.07,
-    #                     relheight=0.012)
-    #
-    #     self.textCons = Text(self.Window,
-    #                          width=20,
-    #                          height=2,
-    #                          bg='gray91',
-    #                          fg="black",
-    #                          font="Helvetica 14",
-    #                          padx=5,
-    #                          pady=5)
-    #
-    #     self.textCons.place(relheight=0.745,
-    #                         relwidth=1,
-    #                         rely=0.08)
-    #
-    #     self.labelBottom = Label(self.Window,
-    #                              bg='#856ff8',
-    #                              height=80)
-    #
-    #     self.labelBottom.place(relwidth=1,
-    #                            rely=0.825)
-    #
-    #     self.entryMsg = Entry(self.labelBottom,
-    #                           bg='#856ff8',
-    #                           fg='gray91',
-    #                           font="Helvetica 13")
-    #
-    #     self.entryMsg.place(relwidth=0.74,
-    #                         relheight=0.06,
-    #                         rely=0.008,
-    #                         relx=0.011)
-    #
-    #     self.entryMsg.focus()
-    #
-    #     self.buttonMsg = Button(self.labelBottom,
-    #                                 text="Send",
-    #                                 font="Helvetica 10 bold",
-    #                                 width=20,
-    #                                 bg='#856ff8',
-    #                                 command=lambda: self.sendButton(self.entryMsg.get()))
-    #
-    #     self.buttonMsg.place(relx=0.77,
-    #                          rely=0.008,
-    #                          relheight=0.06,
-    #                          relwidth=0.22)
-    #
-    #     self.textCons.config(cursor="arrow")
-    #
-    #     # create a scroll bar
-    #     scrollbar = Scrollbar(self.textCons)
-    #
-    #     # place the scroll bar
-    #     # into the gui window
-    #     scrollbar.place(relheight=1,
-    #                     relx=0.974)
-    #
-    #     scrollbar.config(command=self.textCons.yview)
-    #
-    #     self.textCons.config(state=DISABLED)
-    #
-    #     # function to basically start the thread for sending messages
-    #
-    # def sendButton(self, msg):
-    #     self.textCons.config(state=DISABLED)
-    #     self.msg = msg
-    #     self.entryMsg.delete(0, END)
-    #     self.textCons.config(state=NORMAL)
-    #     self.textCons.insert(END,
-    #                         self.username.get()+': '+ msg + "\n\n")
-    #
-    #     self.textCons.config(state=DISABLED)
-    #     self.textCons.see(END)
-    #     # snd = threading.Thread(target=self.sendMessage)
-    #     # snd.start()
-    #
-    # def receiveR(self):
 
     def sendLogInData(self,t):
         r=self.client.sendLogInData(self.username.get(),self.password.get())
@@ -432,25 +245,25 @@ class GUI(Frame):
         rcv = threading.Thread(target=self.getSearchResult, args=(name,))
         rcv.start()
 
-
     def getSearchResult(self,name):
         msgFromServer = self.client.search(name)
         if msgFromServer['address'] == 'BUSY':
             Label(self.search_screen, text=msgFromServer).pack()
         else:
-            #self.chat(msgFromServer['name'],'s')
             self.client.createChatConnection(msgFromServer['address'])
-            self.client.chatS(self.username.get(),msgFromServer['name'])
             self.search_screen.destroy()
+            state=self.client.chatS(self.username.get(),msgFromServer['name'])
+            if state == 'LOGOUT':
+                self.waiting()
 
     def acceptRequist(self):
-        m=self.client.wait()
-        print(m['address'])
-        if len(m)!=0:
-            #self.chat(m['name'],'c')
-            self.client.connectToChat(m['address'])
-            self.client.chatR(m['name'], self.username.get())
+        msgFromServer=self.client.wait()
+        if len(msgFromServer)!=0:
+            self.client.connectToChat(msgFromServer['address'])
             self.wait_screen.destroy()
+            state=self.client.chatR(msgFromServer['name'], self.username.get())
+            if state == 'LOGOUT':
+                self.waiting()
 
 
 

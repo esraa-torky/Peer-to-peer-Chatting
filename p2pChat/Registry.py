@@ -2,8 +2,6 @@ import socket
 import _thread
 import json
 
-
-
 class Server:
     def __init__(self):
         self.ipUDP = "127.0.0.1"
@@ -36,7 +34,6 @@ class Server:
         connection.send(bytes('Welcome to the Server write NEW for new account or OLD if you have an account', 'utf-8'))
         userType = connection.recv(1024).decode('utf-8')
         found = False
-        print(userType)
         if userType == 'NEW':
             while True:
                 name = connection.recv(1024).decode('utf-8')
@@ -82,25 +79,25 @@ class Server:
         self.checkConnection(client)
 
 
-    def UDPConnection(self,client):
-        bytesAddressPair = self.serverUDP.recvfrom(self.bufferSize)
-        message = bytesAddressPair[0]
-        address = bytesAddressPair[1]
-        clientMsg = "Message from Client:{}".format(message)
-        clientIP = "Client IP Address:{}".format(address)
-        self.onlineClients[self.onlineClients.index(client)]['UDPaddress'] = address
-        print(clientMsg)
-        print(clientIP)
-        print('first')
-        while True:
-            bytesAddressPair = self.serverUDP.recvfrom(self.bufferSize)
-            message = bytesAddressPair[0]
-            address = bytesAddressPair[1]
-            clientMsg = "Message from Client:{}".format(message)
-            clientIP = "Client IP Address:{}".format(address)
-            self.onlineClients[self.onlineClients.index(client)]['UDPaddress'] = address
-            print(clientMsg)
-            print(clientIP)
+    # def UDPConnection(self,client):
+    #     bytesAddressPair = self.serverUDP.recvfrom(self.bufferSize)
+    #     message = bytesAddressPair[0]
+    #     address = bytesAddressPair[1]
+    #     clientMsg = "Message from Client:{}".format(message)
+    #     clientIP = "Client IP Address:{}".format(address)
+    #     self.onlineClients[self.onlineClients.index(client)]['UDPaddress'] = address
+    #     print(clientMsg)
+    #     print(clientIP)
+    #     print('first')
+    #     while True:
+    #         bytesAddressPair = self.serverUDP.recvfrom(self.bufferSize)
+    #         message = bytesAddressPair[0]
+    #         address = bytesAddressPair[1]
+    #         clientMsg = "Message from Client:{}".format(message)
+    #         clientIP = "Client IP Address:{}".format(address)
+    #         self.onlineClients[self.onlineClients.index(client)]['UDPaddress'] = address
+    #         print(clientMsg)
+    #         print(clientIP)
 
 
     def checkConnection(self, client):
@@ -136,26 +133,20 @@ class Server:
                 data2 = json.dumps({"address": client['address'], "name": client['name']})
                 reciver['client'].send(data2.encode())
                 self.onlineClients[self.onlineClients.index(reciver)]['state'] = 'chatting'
-
+                if client['client'].recv(self.bufferSize).decode('utf-8') == 'LOGOUT':
+                    reciver['client'].send(bytes('BACK','utf-8'))
+                    client['client'].close()
+                    self.onlineClients.pop(self.onlineClients.index(client))
+                    self.onlineClients[self.onlineClients.index(reciver)]['state'] = 'HERE'
             else:
                 data2 = json.dumps({"address":'BUSY'})
                 client['client'].send(data2.encode())
 
-    def chat(self,client1,client2):
-        while True:
-            msg1=client1.recv(self.bufferSize)
-            client2.send(msg1)
-            msg2 = client2.recv(self.bufferSize)
-            client1.send(msg2)
-            if msg2 == 'LOG OUT' or msg1 == 'LOG OUT':
-                break
-
     def TCPConnection(self):
-        self.serverTCP.listen(5)
+        self.serverTCP.listen(10)
         client, address = self.serverTCP.accept()
         print('accepted')
         _thread.start_new_thread(self.login_threaded, (client,address))
-        print(self.onlineClients)
 
 
 def main():

@@ -34,7 +34,28 @@
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
-  <component name="RunManager" selected="Python.GUI">
+  <component name="RunManager" selected="Python.Client">
+    <configuration name="Client" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="p2pChat" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Client.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="GUI" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="p2pChat" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -119,34 +140,13 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="testClient" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <module name="p2pChat" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/testClient.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.Client" />
+        <item itemvalue="Python.Registry" />
         <item itemvalue="Python.GUI" />
         <item itemvalue="Python.tessst" />
-        <item itemvalue="Python.Registry" />
         <item itemvalue="Python.teeeeeest" />
-        <item itemvalue="Python.testClient" />
       </list>
     </recent_temporary>
   </component>
@@ -201,7 +201,14 @@
       <option name="project" value="LOCAL" />
       <updated>1641882173045</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="GUI created / login / search / send messages / save the messages">
+      <created>1641926784154</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1641926784154</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -209,7 +216,8 @@
     <MESSAGE value="multi-threading added" />
     <MESSAGE value="replaced the connection between 2 clients with TCP" />
     <MESSAGE value="GUI created / login / search(not complete)" />
-    <option name="LAST_COMMIT_MESSAGE" value="GUI created / login / search(not complete)" />
+    <MESSAGE value="GUI created / login / search / send messages / save the messages" />
+    <option name="LAST_COMMIT_MESSAGE" value="GUI created / login / search / send messages / save the messages" />
   </component>
   <component name="WindowStateProjectService">
     <state x="361" y="70" key="#Inspections" timestamp="1641642856782">
@@ -220,30 +228,30 @@
       <screen x="0" y="0" width="1536" height="824" />
     </state>
     <state x="459" y="0" key="#com.intellij.refactoring.rename.AutomaticRenamingDialog/0.0.1536.824@0.0.1536.824" timestamp="1641383855324" />
-    <state x="404" y="7" key="CommitChangelistDialog2" timestamp="1641882170946">
+    <state x="404" y="7" key="CommitChangelistDialog2" timestamp="1641926781244">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
-    <state x="404" y="7" key="CommitChangelistDialog2/0.0.1536.824@0.0.1536.824" timestamp="1641882170946" />
+    <state x="404" y="7" key="CommitChangelistDialog2/0.0.1536.824@0.0.1536.824" timestamp="1641926781244" />
     <state x="549" y="153" key="FileChooserDialogImpl" timestamp="1641735784472">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
     <state x="549" y="153" key="FileChooserDialogImpl/0.0.1536.824@0.0.1536.824" timestamp="1641735784472" />
-    <state width="1515" height="221" key="GridCell.Tab.0.bottom" timestamp="1641925807732">
+    <state width="1515" height="262" key="GridCell.Tab.0.bottom" timestamp="1641933161418">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
-    <state width="1515" height="221" key="GridCell.Tab.0.bottom/0.0.1536.824@0.0.1536.824" timestamp="1641925807732" />
-    <state width="1515" height="221" key="GridCell.Tab.0.center" timestamp="1641925807732">
+    <state width="1515" height="262" key="GridCell.Tab.0.bottom/0.0.1536.824@0.0.1536.824" timestamp="1641933161418" />
+    <state width="1515" height="262" key="GridCell.Tab.0.center" timestamp="1641933161418">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
-    <state width="1515" height="221" key="GridCell.Tab.0.center/0.0.1536.824@0.0.1536.824" timestamp="1641925807732" />
-    <state width="1515" height="221" key="GridCell.Tab.0.left" timestamp="1641925807732">
+    <state width="1515" height="262" key="GridCell.Tab.0.center/0.0.1536.824@0.0.1536.824" timestamp="1641933161418" />
+    <state width="1515" height="262" key="GridCell.Tab.0.left" timestamp="1641933161418">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
-    <state width="1515" height="221" key="GridCell.Tab.0.left/0.0.1536.824@0.0.1536.824" timestamp="1641925807732" />
-    <state width="1515" height="221" key="GridCell.Tab.0.right" timestamp="1641925807732">
+    <state width="1515" height="262" key="GridCell.Tab.0.left/0.0.1536.824@0.0.1536.824" timestamp="1641933161418" />
+    <state width="1515" height="262" key="GridCell.Tab.0.right" timestamp="1641933161418">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
-    <state width="1515" height="221" key="GridCell.Tab.0.right/0.0.1536.824@0.0.1536.824" timestamp="1641925807732" />
+    <state width="1515" height="262" key="GridCell.Tab.0.right/0.0.1536.824@0.0.1536.824" timestamp="1641933161418" />
     <state width="1515" height="261" key="GridCell.Tab.1.bottom" timestamp="1641643947667">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
@@ -264,10 +272,10 @@
       <screen x="0" y="0" width="1536" height="824" />
     </state>
     <state x="277" y="54" key="SettingsEditor/0.0.1536.824@0.0.1536.824" timestamp="1641736079427" />
-    <state x="361" y="133" key="Vcs.Push.Dialog.v2" timestamp="1641882181694">
+    <state x="361" y="133" key="Vcs.Push.Dialog.v2" timestamp="1641926785664">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
-    <state x="361" y="133" key="Vcs.Push.Dialog.v2/0.0.1536.824@0.0.1536.824" timestamp="1641882181694" />
+    <state x="361" y="133" key="Vcs.Push.Dialog.v2/0.0.1536.824@0.0.1536.824" timestamp="1641926785664" />
     <state x="93" y="93" width="1350" height="638" key="com.intellij.history.integration.ui.views.FileHistoryDialog" timestamp="1641918388663">
       <screen x="0" y="0" width="1536" height="824" />
     </state>
