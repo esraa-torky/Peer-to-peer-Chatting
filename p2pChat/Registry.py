@@ -1,6 +1,9 @@
 import socket
 import sys
 import _thread
+import json
+import time
+
 
 class Server:
     def __init__(self):
@@ -14,7 +17,6 @@ class Server:
         # creating the TCP socket
         self.serverTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serverTCP.bind((self.ipUDP, 1234))
-
 
     def readUsers(self):
         file = open('users.txt', 'r')
@@ -34,6 +36,7 @@ class Server:
         connection.send(bytes('Welcome to the Server write NEW for new account or OLD if you have an account', 'utf-8'))
         userType = connection.recv(1024).decode('utf-8')
         found = False
+        print(userType)
         if userType == 'NEW':
             while True:
                 name = connection.recv(1024).decode('utf-8')
@@ -46,7 +49,9 @@ class Server:
                     connection.send(bytes('try new username', 'utf-8'))
                     found = False
                 else:
-                    self.onlineClients.append({'name': name, 'password': password, 'address': address})
+                    client = {'name': name, 'password': password, 'address': address,
+                              'client': connection, 'state': 'HERE'}
+                    self.onlineClients.append(client)
                     self.addUserToFile(name, password)
                     connection.send(bytes('pass', 'utf-8'))
                     break
@@ -59,60 +64,85 @@ class Server:
                         found = True
                         break
                 if found:
-                    here=False
+                    here = False
                     for i in self.onlineClients:
                         if i['name'] == name:
                             connection.send(bytes('already online on another machine', 'utf-8'))
-                            here =True
+                            here = True
                             break
                     if not here:
-                        self.onlineClients.append({'name': name, 'password': password, 'address': address})
+                        client = {'name': name, 'password': password, 'address': address,
+                                  'client': connection, 'state': 'HERE'}
+                        self.onlineClients.append(client)
                         connection.send(bytes('pass', 'utf-8'))
                         print('DONE')
                         break
                 else:
                     connection.send(bytes('user name or password is wrong !!', 'utf-8'))
-        self.peers(connection)
-        #connection.close()
-        # pass the index of the client in the online clients list
-        #self.UDPConnection(self.onlineClients.index(next(filter(lambda n: n.get('name') == name, self.onlineClients))))
-        #print(self.onlineClients[self.onlineClients.index(next(filter(lambda n: n.get('name') == name, self.onlineClients)))])
+        self.checkConnection(client)
 
-    def UDPConnection(self,clientLocation):
-        msgFromServer = "Hello UDP Client "+self.onlineClients[clientLocation]['name']
+    def UDPConnection(self, clientLocation):
+        msgFromServer = "Hello UDP Client " + self.onlineClients[clientLocation]['name']
         bytesToSend = str.encode(msgFromServer)
         bytesAddressPair = self.serverUDP.recvfrom(self.bufferSize)
         message = bytesAddressPair[0]
         address = bytesAddressPair[1]
-        self.onlineClients[clientLocation]['address']=address
+        self.onlineClients[clientLocation]['address'] = address
         clientMsg = "Message from Client:{}".format(message)
         clientIP = "Client IP Address:{}".format(address)
         print(clientMsg)
         print(clientIP)
         self.serverUDP.sendto(bytesToSend, address)
-        self.peers(clientLocation)
+        self.checkConnection(clientLocation)
 
-    def peers(self,client):
+    def checkConnection(self, client):
         while True:
-            found=False
+            print(client['client'].recv(1024).decode('utf-8'))
             if len(self.onlineClients) > 1:
-                client.send(b'other clients arrive send the name you want to chat with ')
-                name=client.recv(1024).decode('utf-8')
-                for i in self.onlineClients:
-                    if name == i['name']:
-                        found=True
-                if found:
-                    client.send(b'found')
+                client['client'].send(b'ENTER')
+                r = client['client'].recv(1024).decode('utf-8')
+                print(r)
+                if r != 'NO':
+                    self.onlineClients[self.onlineClients.index(client)]['state'] = 'searching'
+                    self.search(client)
+                    break
                 else:
-                    client.send(b'not found')
-                break
+                    self.onlineClients[self.onlineClients.index(client)]['state'] = 'waiting'
+                    client['state'] = 'waiting'
+            else:
+                client['client'].send(b'nothing')
 
+    def search(self, client):
+        while True:
+            name = client['client'].recv(1024).decode('utf-8')
+            print(name)
+            found = False
+            for i in self.onlineClients:
+                if name == i['name']:
+                    found = True
+                    reciver = i
+            if found and reciver['state'] == 'waiting':
+                reciver['client'].send(bytes('REQUEST', 'utf-8'))
+                answer = reciver['client'].recv(self.bufferSize)
+                print(answer)
+                client['client'].send(answer)
+            else:
+                client['client'].send(bytes('BUSY', 'utf-8'))
+
+    def chat(self, client1, client2):
+        while True:
+            msg1 = client1.recv(self.bufferSize)
+            client2.send(msg1)
+            msg2 = client2.recv(self.bufferSize)
+            client1.send(msg2)
+            if msg2 == 'LOG OUT' or msg1 == 'LOG OUT':
+                break
 
     def TCPConnection(self):
         self.serverTCP.listen(5)
         client, address = self.serverTCP.accept()
         print('accepted')
-        _thread.start_new_thread(self.login_threaded, (client,address))
+        _thread.start_new_thread(self.login_threaded, (client, address))
         print(self.onlineClients)
 
 
@@ -120,9 +150,6 @@ def main():
     server = Server()
     while True:
         server.TCPConnection()
-
-
-
 
 
 main()
