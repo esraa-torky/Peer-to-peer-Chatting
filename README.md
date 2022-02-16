@@ -1,2 +1,2 @@
 # Peer-to-peer Chatting
- P2P chatting application
+ P2P chatting application with python
