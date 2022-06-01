@@ -2,6 +2,10 @@ import socket
 import _thread
 import json
 
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Hash import Poly1305
+from Crypto.Protocol.KDF import scrypt
 class Server:
     def __init__(self):
         self.ipUDP = "127.0.0.1"

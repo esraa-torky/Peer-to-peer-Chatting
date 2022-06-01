@@ -3,8 +3,40 @@ from threading import Thread
 from tkinter import *
 import socket
 import json
+import logging
+import colorama
+
+from p2pChat.CustomFormatter import CustomFormatter
+
+colorama.init()
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Hash import Poly1305
+from Crypto.Protocol.KDF import scrypt
 
 import time
+
+LOG_PATH = 'p2pChat/logs'
+LOG_FILE_NAME = 'client'
+logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
+rootLogger = logging.getLogger()
+
+fileHandler = logging.FileHandler("{0}/{1}.log".format(LOG_PATH, LOG_FILE_NAME))
+fileHandler.setFormatter(logFormatter)
+rootLogger.addHandler(fileHandler)
+
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+rootLogger.addHandler(consoleHandler)
+rootLogger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+
+ch.setFormatter(CustomFormatter())
+rootLogger.addHandler(ch)
+rootLogger.info()
+rootLogger.log(1,'asdasd')
+
 
 
 class Client(Thread):
