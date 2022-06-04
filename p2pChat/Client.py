@@ -19,7 +19,7 @@ import time
 LOG_PATH = 'p2pChat/logs'
 LOG_FILE_NAME = 'client'
 logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
-rootLogger = logging.getLogger()
+rootLogger = logging.getLogger("CLIENT")
 
 fileHandler = logging.FileHandler("{0}/{1}.log".format(LOG_PATH, LOG_FILE_NAME))
 fileHandler.setFormatter(logFormatter)
