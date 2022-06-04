@@ -5,7 +5,9 @@ import socket
 import json
 import logging
 import colorama
-
+from Crypto.PublicKey import RSA
+from tinyec import registry
+import secrets
 from p2pChat.CustomFormatter import CustomFormatter
 
 LOG_PATH = 'p2pChat/logs'
@@ -56,6 +58,18 @@ def set_var(Key=None, hash_key=None, iv=None, nonce=None, master_secret=None):
     if master_secret is not None:
         MASTER_SECRET = master_secret
 
+def generateRSAKeys(userName):
+    pass_phrase = "SECURITY_HW_1"
+    keys = RSA.generate(2048)
+    public_key = keys.public_key()
+    # exporting the public key
+    f1 = open(f"K{userName}+.pem", 'wb')
+    f1.write(public_key.export_key('PEM'))
+    f1.close()
+    # exporting the private key
+    f2 = open(f'K{userName}-.pem', 'wb')
+    f2.write(keys.export_key('PEM', pass_phrase))
+    f2.close()
 
 def generate_mac(data, key):
     LOGGER.info('Generating mac')

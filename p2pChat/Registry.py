@@ -1,17 +1,16 @@
-import socket
+import datetime
 import _thread
-import json
 import socket
 import json
 import logging
 import colorama
-
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
-from Crypto.Hash import Poly1305
-from Crypto.Protocol.KDF import scrypt
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat._oid import NameOID
+from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_pem_private_key
+from cryptography import x509
 
 from p2pChat.CustomFormatter import CustomFormatter
+from p2pChat.security import generateRSAKeys
 
 LOG_PATH = 'p2pChat/logs'
 LOG_FILE_NAME = 'client'
@@ -46,6 +45,7 @@ class Server:
         # creating the TCP socket
         self.serverTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serverTCP.bind((self.ipUDP, 1234))
+        generateRSAKeys('server')
 
 
     def readUsers(self):
@@ -83,7 +83,24 @@ class Server:
                     self.onlineClients.append(client)
                     self.addUserToFile(name, password)
                     connection.send(bytes('pass', 'utf-8'))
+                    # get public key
+                    userKey = connection.recv(1024)
+                    # create certificate and send it to client
+                    connection.send(self.createCertificate(userKey, name))
+                    # check if the client get his certificate correctly
+                    while True:
+                        check = connection.recv(1024).decode('utf-8')
+                        if check == 'pass':
+                            print('all is good certificate')
+                            break
+                        else :
+                            print('bad')
+                            # get public key
+                            userKey = connection.recv(1024)
+                            # create certificate and send it to client
+                            connection.send(self.createCertificate(userKey, name))
                     break
+
         elif userType == 'OLD':
             while True:
                 name = connection.recv(1024).decode('utf-8')
@@ -104,33 +121,25 @@ class Server:
                                                    'client': connection, 'state': 'HERE','UDPaddress':''}
                         self.onlineClients.append(client)
                         connection.send(bytes('pass', 'utf-8'))
-                        print('DONE')
+                        # get public key
+                        userKey = connection.recv(1024)
+                        print('key is here')
+                        # create certificate and send it to client
+                        connection.send(self.createCertificate(userKey, name))
+                        # check if the client get his certificate correctly
+                        while True:
+                            check = connection.recv(1024).decode('utf-8')
+                            if check == 'pass':
+                                break
+                            else:
+                                # get public key again
+                                userKey = connection.recv(1024)
+                                # create certificate and send it to client again
+                                connection.send(self.createCertificate(userKey, name))
                         break
                 else:
                     connection.send(bytes('user name or password is wrong !!', 'utf-8'))
         self.checkConnection(client)
-
-
-    # def UDPConnection(self,client):
-    #     bytesAddressPair = self.serverUDP.recvfrom(self.bufferSize)
-    #     message = bytesAddressPair[0]
-    #     address = bytesAddressPair[1]
-    #     clientMsg = "Message from Client:{}".format(message)
-    #     clientIP = "Client IP Address:{}".format(address)
-    #     self.onlineClients[self.onlineClients.index(client)]['UDPaddress'] = address
-    #     print(clientMsg)
-    #     print(clientIP)
-    #     print('first')
-    #     while True:
-    #         bytesAddressPair = self.serverUDP.recvfrom(self.bufferSize)
-    #         message = bytesAddressPair[0]
-    #         address = bytesAddressPair[1]
-    #         clientMsg = "Message from Client:{}".format(message)
-    #         clientIP = "Client IP Address:{}".format(address)
-    #         self.onlineClients[self.onlineClients.index(client)]['UDPaddress'] = address
-    #         print(clientMsg)
-    #         print(clientIP)
-
 
     def checkConnection(self, client):
         while True:
@@ -179,6 +188,29 @@ class Server:
         client, address = self.serverTCP.accept()
         print('accepted')
         _thread.start_new_thread(self.login_threaded, (client,address))
+
+    def createCertificate(self,userKey,username):
+        pass_phrase = "SECURITY_HW_1".encode()
+        userKey = load_pem_public_key(userKey)
+        subject = x509.Name([
+            x509.NameAttribute(NameOID.GIVEN_NAME, username),])
+        # get server keys
+        # encoded_key = open("Kserver+.pem", "rb").read()
+        # ka_public = load_pem_public_key(encoded_key)
+        encoded_key = open("Kserver-.pem", "rb").read()
+        ka_private = load_pem_private_key(encoded_key, password=pass_phrase)
+        # create certificate
+        certificate = x509.CertificateBuilder().subject_name(subject).issuer_name(subject).serial_number(
+            x509.random_serial_number()).not_valid_before(
+            datetime.datetime.utcnow()).not_valid_after(
+            # Our certificate will be valid for 10 days
+            datetime.datetime.utcnow() + datetime.timedelta(days=10)).add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
+            critical=False, ).public_key(userKey).sign(ka_private, hashes.SHA256())
+        f1 = open(f'certificate{username}.pem', 'wb')
+        f1.write(certificate.public_bytes(serialization.Encoding.PEM))
+        f1.close()
+        return certificate.public_bytes(serialization.Encoding.PEM)
 
 
 def main():

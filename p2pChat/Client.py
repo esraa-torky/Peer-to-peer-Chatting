@@ -5,17 +5,15 @@ import socket
 import json
 import logging
 import colorama
+import os
+
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_pem_private_key
 
 from p2pChat.CustomFormatter import CustomFormatter
-from p2pChat.security import decrypt_msg, encrypt_msg
-
+from p2pChat.security import decrypt_msg, encrypt_msg, generateRSAKeys
 colorama.init()
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
-from Crypto.Hash import Poly1305
-from Crypto.Protocol.KDF import scrypt
-
-import time
 
 LOG_PATH = 'p2pChat/logs'
 LOG_FILE_NAME = 'client'
@@ -35,7 +33,8 @@ ch.setLevel(logging.DEBUG)
 
 ch.setFormatter(CustomFormatter())
 rootLogger.addHandler(ch)
-
+#
+from p2pChat.security import generateRSAKeys
 
 
 class Client(Thread):
@@ -46,13 +45,44 @@ class Client(Thread):
         self.bufferSize = 1024
         self.serverUDP = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 
-    def createMessagesfile(self,name):
-        file = open(name+'.txt', 'a')
+    def gettingRSAKeys(self, username):
+        pass_phrase = "SECURITY_HW_1".encode()
+        if self.findFile(f"K{username}+.pem"):
+            encoded_key = open(f"K{username}+.pem", "rb").read()
+            ka_public = load_pem_public_key(encoded_key)
+            encoded_key = open(f"K{username}-.pem", "rb").read()
+            ka_private = load_pem_private_key(encoded_key, password=pass_phrase)
+        else:
+            generateRSAKeys(username)
+            encoded_key = open(f"K{username}+.pem", "rb").read()
+            ka_public = load_pem_public_key(encoded_key)
+            encoded_key = open(f"K{username}-.pem", "rb").read()
+            ka_private = load_pem_private_key(encoded_key, password=pass_phrase)
+        while True:
+            # send public key to server
+            self.serverTCP.send((ka_public.public_bytes(encoding=serialization.Encoding.PEM,
+                                                        format=serialization.PublicFormat.SubjectPublicKeyInfo)))
+            # get certificate from the server
+            x = self.serverTCP.recv(self.bufferSize)
+            certificate = x509.load_pem_x509_certificate(x)
+            # TODO add certificate check here
+            test = certificate.public_key().public_bytes(encoding=serialization.Encoding.PEM,
+                                                         format=serialization.PublicFormat.SubjectPublicKeyInfo) == ka_public.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            if (test):
+                self.serverTCP.send(bytes('pass', 'utf-8'))
+                break
+            else:
+                self.serverTCP.send(bytes('wrong', 'utf-8'))
+
+    def createMessagesfile(self, name):
+        file = open(name + '.txt', 'a')
         return file
 
-    def saveMessages(self,name,message):
-        file=open(name + '.txt', 'a')
-        file.write(message +'\n')
+    def saveMessages(self, name, message):
+        file = open(name + '.txt', 'a')
+        file.write(message + '\n')
         file.close()
 
     def TCPConnection(self):
@@ -61,10 +91,10 @@ class Client(Thread):
         self.serverTCP.connect((self.ip, 1234))
         print(self.serverTCP.recv(self.bufferSize).decode('utf-8'))
 
-    def getType(self,type):
+    def getType(self, type):
         self.serverTCP.send(bytes(type, 'utf-8'))
 
-    def sendLogInData(self,username,password):
+    def sendLogInData(self, username, password):
         self.serverTCP.send(bytes(username, 'utf-8'))
         self.serverTCP.send(bytes(password, 'utf-8'))
         respond = self.serverTCP.recv(self.bufferSize).decode('utf-8')
@@ -75,13 +105,13 @@ class Client(Thread):
         msgFromServer = self.serverTCP.recv(self.bufferSize).decode('utf-8')
         return msgFromServer
 
-    def searchOrWait(self,check):
+    def searchOrWait(self, check):
         self.serverTCP.send(bytes(check, 'utf-8'))
 
-    def search(self,name):
+    def search(self, name):
         self.serverTCP.send(bytes(name, 'utf-8'))
         msgFromServer = self.serverTCP.recv(self.bufferSize)
-        msgFromServer=json.loads(msgFromServer.decode())
+        msgFromServer = json.loads(msgFromServer.decode())
         return msgFromServer
 
     def wait(self):
@@ -89,12 +119,7 @@ class Client(Thread):
         msgFromServer = json.loads(msgFromServer.decode())
         return msgFromServer
 
-    # def sendHalloToUDP(self):
-    #     msgFromClient = "Hello UDP Server"
-    #     bytesToSend = str.encode(msgFromClient)
-    #     self.serverUDP.sendto(bytesToSend, (self.ip, self.port))
-
-    def createChatConnection(self,address):
+    def createChatConnection(self, address):
         clientTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clientTCP.bind((address[0], address[1]))
 
@@ -102,7 +127,7 @@ class Client(Thread):
         self.client, address = clientTCP.accept()
         # client.send(bytes('welcome', 'utf-8'))
 
-    def connectToChat(self,address):
+    def connectToChat(self, address):
         self.reciverTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.reciverTCP.connect((address[0], address[1]))
 
@@ -149,6 +174,9 @@ class Client(Thread):
             else:
                 print(m)
 
+    def findFile(self, file):
+        return os.path.isfile(file) and os.path.getsize(file) > 0
+
 
 class GUI(Frame):
     def __init__(self, parent):
@@ -162,10 +190,10 @@ class GUI(Frame):
         Label(text="Choose Login Or Register", bg='#856ff8', width="300", height="2", font=("Calibri", 13)).pack()
         Label(text="").pack()
         # create Login Button
-        Button(text="Login", height="2", width="30",command=self.login).pack()
+        Button(text="Login", height="2", width="30", command=self.login).pack()
         Label(text="").pack()
         # create a register button
-        Button(text="Register", height="2", width="30",command=self.register).pack()
+        Button(text="Register", height="2", width="30", command=self.register).pack()
 
     def register(self):
         self.client.getType('NEW')
@@ -185,7 +213,8 @@ class GUI(Frame):
         self.password_entry = Entry(self.register_screen, textvariable=self.password, show='*')
         self.password_entry.pack()
         Label(self.register_screen, text="").pack()
-        Button(self.register_screen, text="Register", width=10, height=1, bg='#856ff8',command=lambda:self.sendLogInData(0)).pack()
+        Button(self.register_screen, text="Register", width=10, height=1, bg='#856ff8',
+               command=lambda: self.sendLogInData(0)).pack()
 
     def login(self):
         self.client.getType('OLD')
@@ -204,19 +233,22 @@ class GUI(Frame):
         self.password__login_entry = Entry(self.login_screen, textvariable=self.password, show='*')
         self.password__login_entry.pack()
         Label(self.login_screen, text="").pack()
-        Button(self.login_screen, text="Login", width=10, height=1, command=lambda:self.sendLogInData(1)).pack()
+        Button(self.login_screen, text="Login", width=10, height=1, command=lambda: self.sendLogInData(1)).pack()
 
     def waitOrSearch(self):
         waitOrSearch_screen = Toplevel(self.parent)
         waitOrSearch_screen.title("search")
         waitOrSearch_screen.geometry("300x250")
-        Label(waitOrSearch_screen,text="search or wait", bg='#856ff8', width="300", height="2", font=("Calibri", 13)).pack()
-        Label(waitOrSearch_screen,text="").pack()
+        Label(waitOrSearch_screen, text="search or wait", bg='#856ff8', width="300", height="2",
+              font=("Calibri", 13)).pack()
+        Label(waitOrSearch_screen, text="").pack()
         # create Login Button
-        Button(waitOrSearch_screen,text="search", height="2", width="30", command=lambda:[self.search(),waitOrSearch_screen.destroy()]).pack()
-        Label(waitOrSearch_screen,text="").pack()
+        Button(waitOrSearch_screen, text="search", height="2", width="30",
+               command=lambda: [self.search(), waitOrSearch_screen.destroy()]).pack()
+        Label(waitOrSearch_screen, text="").pack()
         # create a register button
-        Button(waitOrSearch_screen,text="waite", height="2", width="30",command=lambda:[self.wait(),waitOrSearch_screen.destroy()]).pack()
+        Button(waitOrSearch_screen, text="waite", height="2", width="30",
+               command=lambda: [self.wait(), waitOrSearch_screen.destroy()]).pack()
 
     def waiting(self):
         self.waiting_screen = Toplevel(self.parent)
@@ -236,7 +268,8 @@ class GUI(Frame):
         Label(self.wait_screen, text="waiting for other user to contact you").pack()
         Label(self.wait_screen, text="").pack()
         Label(self.wait_screen, text="or you can go and search").pack()
-        Button(self.wait_screen, text="search", width=10, height=1,command=lambda: [self.waitOrSearch(), self.wait_screen.destroy()]).pack()
+        Button(self.wait_screen, text="search", width=10, height=1,
+               command=lambda: [self.waitOrSearch(), self.wait_screen.destroy()]).pack()
 
     def search(self):
         self.client.searchOrWait('OK')
@@ -250,24 +283,26 @@ class GUI(Frame):
         username_login_entry = Entry(self.search_screen, textvariable=name)
         username_login_entry.pack()
         Label(self.search_screen, text="").pack()
-        Button(self.search_screen, text="search", width=10, height=1, command=lambda: [self.searchRequist(name.get())]).pack()
+        Button(self.search_screen, text="search", width=10, height=1,
+               command=lambda: [self.searchRequist(name.get())]).pack()
 
-    def sendLogInData(self,t):
-        r=self.client.sendLogInData(self.username.get(),self.password.get())
-        if r=='pass':
+    def sendLogInData(self, t):
+        r = self.client.sendLogInData(self.username.get(), self.password.get())
+        if r == 'pass':
+            self.client.gettingRSAKeys(self.username.get())
             self.waiting()
-            if(t==1):
+            if (t == 1):
                 self.login_screen.destroy()
             else:
                 self.register_screen.destroy()
         else:
-            if(t==1):
+            if (t == 1):
                 self.username_login_entry.delete(0, END)
                 self.password__login_entry.delete(0, END)
                 Label(self.login_screen, text=r).pack()
             else:
-                self.password_entry.delete(0,END)
-                self.username_entry.delete(0,END)
+                self.password_entry.delete(0, END)
+                self.username_entry.delete(0, END)
                 Label(self.register_screen, text=r).pack()
 
     def waitForUsers(self):
@@ -277,31 +312,30 @@ class GUI(Frame):
             self.waiting_screen.destroy()
             self.waitOrSearch()
 
-    def searchRequist(self,name):
+    def searchRequist(self, name):
         print(name)
         rcv = threading.Thread(target=self.getSearchResult, args=(name,))
         rcv.start()
 
-    def getSearchResult(self,name):
+    def getSearchResult(self, name):
         msgFromServer = self.client.search(name)
         if msgFromServer['address'] == 'BUSY':
             Label(self.search_screen, text=msgFromServer).pack()
         else:
             self.client.createChatConnection(msgFromServer['address'])
             self.search_screen.destroy()
-            state=self.client.chatS(self.username.get(),msgFromServer['name'])
+            state = self.client.chatS(self.username.get(), msgFromServer['name'])
             if state == 'LOGOUT':
                 self.waiting()
 
-    def acceptRequist(self):
-        msgFromServer=self.client.wait()
-        if len(msgFromServer)!=0:
-            self.client.connectToChat(msgFromServer['address'])
-            self.wait_screen.destroy()
-            state=self.client.chatR(msgFromServer['name'], self.username.get())
-            if state == 'LOGOUT':
-                self.waiting()
-
+    # def acceptRequist(self):
+    #     msgFromServer=self.client.wait()
+    #     if len(msgFromServer)!=0:
+    #         self.client.connectToChat(msgFromServer['address'])
+    #         self.wait_screen.destroy()
+    #         state=self.client.chatR(msgFromServer['name'], self.username.get())
+    #         if state == 'LOGOUT':
+    #             self.waiting()
 
 
 def main():
