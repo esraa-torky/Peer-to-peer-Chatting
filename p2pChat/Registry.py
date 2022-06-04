@@ -1,11 +1,39 @@
 import socket
 import _thread
 import json
+import socket
+import json
+import logging
+import colorama
 
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Hash import Poly1305
 from Crypto.Protocol.KDF import scrypt
+
+from p2pChat.CustomFormatter import CustomFormatter
+
+LOG_PATH = 'p2pChat/logs'
+LOG_FILE_NAME = 'client'
+logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
+LOGGER = logging.getLogger("SERVER")
+
+fileHandler = logging.FileHandler("{0}/{1}.log".format(LOG_PATH, LOG_FILE_NAME))
+fileHandler.setFormatter(logFormatter)
+LOGGER.addHandler(fileHandler)
+
+consoleHandler = logging.StreamHandler()
+consoleHandler.setFormatter(logFormatter)
+LOGGER.addHandler(consoleHandler)
+LOGGER.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+
+ch.setFormatter(CustomFormatter())
+LOGGER.addHandler(ch)
+
+colorama.init()
+
 class Server:
     def __init__(self):
         self.ipUDP = "127.0.0.1"

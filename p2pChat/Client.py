@@ -7,6 +7,7 @@ import logging
 import colorama
 
 from p2pChat.CustomFormatter import CustomFormatter
+from p2pChat.security import decrypt_msg, encrypt_msg
 
 colorama.init()
 from Crypto.Cipher import AES
@@ -34,8 +35,6 @@ ch.setLevel(logging.DEBUG)
 
 ch.setFormatter(CustomFormatter())
 rootLogger.addHandler(ch)
-rootLogger.info()
-rootLogger.log(1,'asdasd')
 
 
 
@@ -108,7 +107,10 @@ class Client(Thread):
 
     def chatR(self,name1,name2):
         while True:
-            m=name1+': '+self.reciverTCP.recv(self.bufferSize).decode()
+            received_msg = self.reciverTCP.recv(self.bufferSize)
+            digest = self.reciverTCP.recv(self.bufferSize)
+            msg = decrypt_msg(digest=digest, encrypted_data=received_msg)
+            m=name1+': '+msg.decode()
             if m== 'LOGOUT':
                 print(m)
                 return'LOGOUT'
@@ -135,7 +137,9 @@ class Client(Thread):
                 self.serverTCP.recv(self.bufferSize)
                 break
             else:
-                self.client.send(bytes(mesge, 'utf-8'))
+                data, digest = encrypt_msg(mesge)
+                self.client.send(bytes(data))
+                self.client.send(bytes(digest))
             m = name2+': '+self.client.recv(self.bufferSize).decode()
             self.saveMessages(name1+'_'+name2, m)
             if m=='LOGOUT':

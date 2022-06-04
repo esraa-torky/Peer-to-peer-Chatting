@@ -11,7 +11,7 @@ from p2pChat.CustomFormatter import CustomFormatter
 LOG_PATH = 'p2pChat/logs'
 LOG_FILE_NAME = 'client'
 logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
-LOGGER = logging.getLogger("CLIENT")
+LOGGER = logging.getLogger("SECURITY")
 
 fileHandler = logging.FileHandler("{0}/{1}.log".format(LOG_PATH, LOG_FILE_NAME))
 fileHandler.setFormatter(logFormatter)
@@ -39,6 +39,10 @@ SYMMETRIC_AES_KEY = 'a'
 HASH_KEY = 'a'
 IV = 'a'
 NONCE = 'a'
+MASTER_SECRET = "SECURITY_HW_1"
+
+
+# key_128 = scrypt(pass_phrase, salt, 16, N=2 ** 14, r=8, p=1)
 
 
 def generate_mac(data, key):
