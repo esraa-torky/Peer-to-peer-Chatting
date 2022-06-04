@@ -97,6 +97,7 @@ class Client(Thread):
     def createChatConnection(self,address):
         clientTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         clientTCP.bind((address[0], address[1]))
+
         clientTCP.listen(1)
         self.client, address = clientTCP.accept()
         # client.send(bytes('welcome', 'utf-8'))

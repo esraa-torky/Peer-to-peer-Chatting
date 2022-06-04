@@ -44,6 +44,18 @@ MASTER_SECRET = "SECURITY_HW_1"
 
 # key_128 = scrypt(pass_phrase, salt, 16, N=2 ** 14, r=8, p=1)
 
+def set_var(Key=None, hash_key=None, iv=None, nonce=None, master_secret=None):
+    if Key is not None:
+        SYMMETRIC_AES_KEY = Key
+    if hash_key is not None:
+        HASH_KEY = hash_key
+    if iv is not None:
+        IV = iv
+    if nonce is not None:
+        NONCE = nonce
+    if master_secret is not None:
+        MASTER_SECRET = master_secret
+
 
 def generate_mac(data, key):
     LOGGER.info('Generating mac')
