@@ -1,3 +1,4 @@
+import base64
 import threading
 from threading import Thread
 from tkinter import *
@@ -7,6 +8,8 @@ import logging
 import colorama
 import os
 
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_pem_private_key
@@ -20,7 +23,7 @@ LOG_FILE_NAME = 'client'
 logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
 rootLogger = logging.getLogger("CLIENT")
 
-fileHandler = logging.FileHandler("{0}/{1}.log".format(LOG_PATH, LOG_FILE_NAME))
+fileHandler = logging.FileHandler("logs/client.log".format(LOG_PATH, LOG_FILE_NAME))
 fileHandler.setFormatter(logFormatter)
 rootLogger.addHandler(fileHandler)
 
@@ -44,34 +47,44 @@ class Client(Thread):
         self.port = 20001
         self.bufferSize = 1024
         self.serverUDP = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        # self.certificate
 
     def gettingRSAKeys(self, username):
-        pass_phrase = "SECURITY_HW_1".encode()
+        pass_phrase = "SECURITY_HW_1"
         if self.findFile(f"K{username}+.pem"):
             encoded_key = open(f"K{username}+.pem", "rb").read()
-            ka_public = load_pem_public_key(encoded_key)
+            ka_public = encoded_key
             encoded_key = open(f"K{username}-.pem", "rb").read()
-            ka_private = load_pem_private_key(encoded_key, password=pass_phrase)
+            ka_private = RSA.import_key(encoded_key, pass_phrase)
         else:
             generateRSAKeys(username)
             encoded_key = open(f"K{username}+.pem", "rb").read()
-            ka_public = load_pem_public_key(encoded_key)
+            ka_public = encoded_key
             encoded_key = open(f"K{username}-.pem", "rb").read()
-            ka_private = load_pem_private_key(encoded_key, password=pass_phrase)
+            ka_private = RSA.import_key(encoded_key, pass_phrase)
         while True:
             # send public key to server
-            self.serverTCP.send((ka_public.public_bytes(encoding=serialization.Encoding.PEM,
-                                                        format=serialization.PublicFormat.SubjectPublicKeyInfo)))
+            self.serverTCP.send(bytes(ka_public))
+            ka_public = RSA.import_key(ka_public)
             # get certificate from the server
-            x = self.serverTCP.recv(self.bufferSize)
-            certificate = x509.load_pem_x509_certificate(x)
-            # TODO add certificate check here
-            test = certificate.public_key().public_bytes(encoding=serialization.Encoding.PEM,
-                                                         format=serialization.PublicFormat.SubjectPublicKeyInfo) == ka_public.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            certificate = self.serverTCP.recv(self.bufferSize)
+            public_key = RSA.import_key(self.serverTCP.recv(self.bufferSize))
+
+            encryptor = PKCS1_OAEP.new(public_key)
+            decoded_encrypted_msg = base64.b64decode(certificate)
+            print(decoded_encrypted_msg)
+            decoded_decrypted_msg = encryptor.decrypt(decoded_encrypted_msg)
+
+            # certificate = x509.load_pem_x509_certificate(x)
+            # # TODO add certificate check here
+            # test = certificate.public_key().public_bytes(encoding=serialization.Encoding.PEM,
+            #                                              format=serialization.PublicFormat.SubjectPublicKeyInfo) == ka_public.public_bytes(
+            #     encoding=serialization.Encoding.PEM,
+            #     format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            test = decoded_decrypted_msg == ka_public
             if (test):
                 self.serverTCP.send(bytes('pass', 'utf-8'))
+                self.certificate = certificate
                 break
             else:
                 self.serverTCP.send(bytes('wrong', 'utf-8'))
@@ -176,6 +189,15 @@ class Client(Thread):
 
     def findFile(self, file):
         return os.path.isfile(file) and os.path.getsize(file) > 0
+
+    def serverHandShaking(self,username):
+        self.serverTCP.send(bytes('hello', 'utf-8'))
+        encoded_key = open(f"K{username}+.pem", "rb").read()
+        ka_public = load_pem_public_key(encoded_key)
+        self.serverTCP.send(self.certificate.public_bytes(serialization.Encoding.PEM))
+        nonce = self.serverTCP.recv(self.bufferSize)
+        x = self.serverTCP.recv(self.bufferSize)
+        userCertificate = x509.load_pem_x509_certificate(x)
 
 
 class GUI(Frame):

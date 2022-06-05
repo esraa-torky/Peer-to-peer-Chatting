@@ -10,12 +10,12 @@ from tinyec import registry
 import secrets
 from p2pChat.CustomFormatter import CustomFormatter
 
-LOG_PATH = 'p2pChat/logs'
+LOG_PATH = '/logs'
 LOG_FILE_NAME = 'client'
 logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
 LOGGER = logging.getLogger("SECURITY")
 
-fileHandler = logging.FileHandler("{0}/{1}.log".format(LOG_PATH, LOG_FILE_NAME))
+fileHandler = logging.FileHandler("logs/client.log")
 fileHandler.setFormatter(logFormatter)
 LOGGER.addHandler(fileHandler)
 

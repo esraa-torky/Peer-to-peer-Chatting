@@ -1,9 +1,12 @@
+import base64
 import datetime
 import _thread
 import socket
 import json
 import logging
 import colorama
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat._oid import NameOID
 from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_pem_private_key
@@ -17,7 +20,7 @@ LOG_FILE_NAME = 'client'
 logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
 LOGGER = logging.getLogger("SERVER")
 
-fileHandler = logging.FileHandler("{0}/{1}.log".format(LOG_PATH, LOG_FILE_NAME))
+fileHandler = logging.FileHandler("logs/client.log".format(LOG_PATH, LOG_FILE_NAME))
 fileHandler.setFormatter(logFormatter)
 LOGGER.addHandler(fileHandler)
 
@@ -86,7 +89,9 @@ class Server:
                     # get public key
                     userKey = connection.recv(1024)
                     # create certificate and send it to client
-                    connection.send(self.createCertificate(userKey, name))
+                    c , k = self.createCertificate(userKey, name)
+                    connection.send(c)
+                    connection.send(k)
                     # check if the client get his certificate correctly
                     while True:
                         check = connection.recv(1024).decode('utf-8')
@@ -98,7 +103,9 @@ class Server:
                             # get public key
                             userKey = connection.recv(1024)
                             # create certificate and send it to client
-                            connection.send(self.createCertificate(userKey, name))
+                            c, k = self.createCertificate(userKey, name)
+                            connection.send(c)
+                            connection.send(k)
                     break
 
         elif userType == 'OLD':
@@ -125,7 +132,9 @@ class Server:
                         userKey = connection.recv(1024)
                         print('key is here')
                         # create certificate and send it to client
-                        connection.send(self.createCertificate(userKey, name))
+                        c, k = self.createCertificate(userKey, name)
+                        connection.send(c)
+                        connection.send(k)
                         # check if the client get his certificate correctly
                         while True:
                             check = connection.recv(1024).decode('utf-8')
@@ -135,7 +144,9 @@ class Server:
                                 # get public key again
                                 userKey = connection.recv(1024)
                                 # create certificate and send it to client again
-                                connection.send(self.createCertificate(userKey, name))
+                                c, k = self.createCertificate(userKey, name)
+                                connection.send(c)
+                                connection.send(k)
                         break
                 else:
                     connection.send(bytes('user name or password is wrong !!', 'utf-8'))
@@ -190,27 +201,35 @@ class Server:
         _thread.start_new_thread(self.login_threaded, (client,address))
 
     def createCertificate(self,userKey,username):
-        pass_phrase = "SECURITY_HW_1".encode()
-        userKey = load_pem_public_key(userKey)
-        subject = x509.Name([
-            x509.NameAttribute(NameOID.GIVEN_NAME, username),])
+        pass_phrase = "SECURITY_HW_1"
+        # userKey = RSA.import_key(userKey)
+        # subject = x509.Name([
+        #     x509.NameAttribute(NameOID.GIVEN_NAME, username),])
         # get server keys
-        # encoded_key = open("Kserver+.pem", "rb").read()
-        # ka_public = load_pem_public_key(encoded_key)
+        encoded_key = open("Kserver+.pem", "rb").read()
+        ka_public = RSA.import_key(encoded_key)
         encoded_key = open("Kserver-.pem", "rb").read()
-        ka_private = load_pem_private_key(encoded_key, password=pass_phrase)
+        ka_private = RSA.import_key(encoded_key, passphrase=pass_phrase)
+            # load_pem_private_key(encoded_key, password=pass_phrase)
         # create certificate
-        certificate = x509.CertificateBuilder().subject_name(subject).issuer_name(subject).serial_number(
-            x509.random_serial_number()).not_valid_before(
-            datetime.datetime.utcnow()).not_valid_after(
-            # Our certificate will be valid for 10 days
-            datetime.datetime.utcnow() + datetime.timedelta(days=10)).add_extension(
-            x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
-            critical=False, ).public_key(userKey).sign(ka_private, hashes.SHA256())
-        f1 = open(f'certificate{username}.pem', 'wb')
-        f1.write(certificate.public_bytes(serialization.Encoding.PEM))
-        f1.close()
-        return certificate.public_bytes(serialization.Encoding.PEM)
+        
+        encryptor = PKCS1_OAEP.new(ka_private)
+        encrypted_msg = encryptor.encrypt(userKey)
+        print(encrypted_msg)
+        encoded_encrypted_msg = base64.b64encode(encrypted_msg)
+
+        # certificate = x509.CertificateBuilder().subject_name(subject).issuer_name(subject).serial_number(
+        #     x509.random_serial_number()).not_valid_before(
+        #     datetime.datetime.utcnow()).not_valid_after(
+        #     # Our certificate will be valid for 10 days
+        #     datetime.datetime.utcnow() + datetime.timedelta(days=10)).add_extension(
+        #     x509.SubjectAlternativeName([x509.DNSName(u"localhost")]),
+        #     critical=False, ).public_key(userKey).sign(ka_private, hashes.SHA256())
+        # f1 = open(f'certificate{username}.pem', 'wb')
+        # f1.write(certificate.public_bytes(serialization.Encoding.PEM))
+        # f1.close()
+        # certificate.public_bytes(serialization.Encoding.PEM)
+        return encoded_encrypted_msg , ka_public
 
 
 def main():
