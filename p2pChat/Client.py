@@ -1,4 +1,6 @@
+import base64
 import threading
+from hashlib import scrypt
 from threading import Thread
 from tkinter import *
 import socket
@@ -6,13 +8,17 @@ import json
 import logging
 import colorama
 import os
-
+import uuid
+from Crypto.Protocol.KDF import scrypt
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
 from cryptography import x509
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_pem_private_key
 
 from CustomFormatter import CustomFormatter
-from security import decrypt_msg, encrypt_msg, generateRSAKeys
+from security import decrypt_msg, encrypt_msg, generateRSAKeys, set_var
 
 colorama.init()
 
@@ -45,6 +51,8 @@ class Client(Thread):
         self.port = 20001
         self.bufferSize = 1024
         self.serverUDP = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        self.pass_phrase = "SECURITY_HW_1"
+
 
     def gettingRSAKeys(self, username):
         pass_phrase = "SECURITY_HW_1".encode()
@@ -192,16 +200,48 @@ class Client(Thread):
         userCertificate = x509.load_pem_x509_certificate(self.client.recv(self.bufferSize))
         LOGGER.info(f'receive certificate is {userCertificate}')
         while True:
+            self.serverTCP.send(bytes('Certificate', 'utf-8'))
             self.serverTCP.send(userCertificate.public_bytes(serialization.Encoding.PEM))
             check = self.serverTCP.recv(self.bufferSize)
             if check.decode() == 'pass':
-                print('certificate check done')
-                # self.chatS(name1,name2)
+                print('certificate check done for both sides')
+                userPublicKey = userCertificate.public_key()
+                LOGGER.info('done with sender')
+                # send the nonce again
+                encreptedNonce = userPublicKey.encrypt(nonce,
+                            padding.OAEP(
+                                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                algorithm=hashes.SHA256(),
+                                label=None
+                            ))
+
+                self.client.send(encreptedNonce)
+                ack = self.client.recv(self.bufferSize).decode()
+                LOGGER.info(f'ACK is {ack}')
+                if ack == 'true':
+                    masterSecret = uuid.uuid4().hex
+                    encreptedMastersSecret = userPublicKey.encrypt(bytes(masterSecret,'utf-8'),
+                                                           padding.OAEP(
+                                                               mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                                               algorithm=hashes.SHA256(),
+                                                               label=None
+                                                           ))
+                    LOGGER.info(f'master secret {masterSecret}')
+                    LOGGER.info(f'master secret encrepted {encreptedMastersSecret}')
+
+                    self.client.send(encreptedMastersSecret)
+                    key = scrypt(masterSecret, nonce, 32, N=2 ** 14, r=8, p=1,num_keys=2)
+                    LOGGER.info(f'key on sender side {key}')
+                    set_var(Key=key[0], hash_key=key[1], iv=bytes(masterSecret.split[:15],'utf-8'), nonce=nonce, master_secret=masterSecret)
+                    self.chatS(name1,name2)
+                else :
+                    pass
+                break
+
             else:
-                print('something wrong')
+                LOGGER.info('somthing wrong with the reciver certificate')
                 self.client.send('wrong certificate')
-                nonce = self.client.recv(self.bufferSize)
-                userCertificate = x509.load_pem_x509_certificate(self.client.recv(self.bufferSize))
+
 
     def handShakingClient(self, name1, name2):
         # hello message
@@ -210,20 +250,58 @@ class Client(Thread):
         recv = self.reciverTCP.recv(self.bufferSize)
         LOGGER.info(f'receiver got the first user certificate: {recv}')
         while True:
+            self.serverTCP.send(bytes('Certificate', 'utf-8'))
             self.serverTCP.send(recv)
             LOGGER.info('Waiting for server to send certificate check')
             check = self.serverTCP.recv(self.bufferSize)
-            LOGGER.info(f' {name1} received {check}')
+            LOGGER.info(f' {name2} received {check}')
             if check.decode() == 'pass':
-                LOGGER.info(f'{name1} - certificate check done')
-                self.reciverTCP.send(bytes('1', 'utf-8'))
+                userCertificate = x509.load_pem_x509_certificate(recv)
+                LOGGER.info(f'{name2} - certificate check done')
+                nonce= uuid.uuid4().hex
+                self.reciverTCP.send(bytes(nonce, 'utf-8'))
                 self.reciverTCP.send(self.certificate.public_bytes(serialization.Encoding.PEM))
-                # self.chatS(name1,name2)
+                LOGGER.info(f'{name1} sent his certificate')
+                encoded_key = open(f"K{name2}-.pem", "rb").read()
+                pass_phrase = self.pass_phrase.encode()
+                myKey = load_pem_private_key(encoded_key, password = pass_phrase)
+                encreptedNonce = self.reciverTCP.recv(self.bufferSize)
+                LOGGER.info(f'recived nonce is {encreptedNonce} {type(encreptedNonce)}')
+                decreptedNonce = myKey.decrypt(
+                                    encreptedNonce,
+                                    padding.OAEP(
+                                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                        algorithm=hashes.SHA256(),
+                                        label=None))
+                LOGGER.info(f'recived nonce is {decreptedNonce} {type(decreptedNonce)}')
+                LOGGER.info(f'our nonce is {nonce} {type(nonce)} ')
+                if decreptedNonce == bytes(nonce,'utf-8'):
+                    self.reciverTCP.send(bytes('true', 'utf-8'))
+                    encreptedMasterSecret = self.reciverTCP.recv(self.bufferSize)
+                    LOGGER.info(f'recived nonce is {encreptedMasterSecret} {type(encreptedMasterSecret)}')
+                    decreptedMasterSecret = myKey.decrypt(
+                        encreptedMasterSecret,
+                        padding.OAEP(
+                            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                            algorithm=hashes.SHA256(),
+                            label=None))
+                    LOGGER.info(f'received nonce is {decreptedMasterSecret} {type(decreptedMasterSecret)}')
+                    key = scrypt(decreptedMasterSecret, nonce, 32, N=2 ** 14, r=8, p=1,num_keys=2)
+                    LOGGER.info(f'key on receiver side {key}')
+                    set_var(Key=key[0], hash_key=key[1], iv=decreptedMasterSecret[:15], nonce=nonce,
+                            master_secret=str(decreptedMasterSecret))
+
+                    self.chatR(name1,name2)
+                else:
+                    self.reciverTCP.send(bytes('false', 'utf-8'))
+
+                break
+
             else:
                 LOGGER.info('Something wrong')
-                self.serverTCP.send('wrong certificate')
-                nonce = self.client.recv(self.bufferSize)
-                userCertificate = x509.load_pem_x509_certificate(self.client.recv(self.bufferSize))
+                self.reciverTCP.send('wrong certificate')
+                # nonce = self.client.recv(self.bufferSize)
+                # userCertificate = x509.load_pem_x509_certificate(self.client.recv(self.bufferSize))
 
 
 class GUI(Frame):
@@ -285,7 +363,7 @@ class GUI(Frame):
 
     def waitOrSearch(self):
         waitOrSearch_screen = Toplevel(self.parent)
-        waitOrSearch_screen.title("search")
+        waitOrSearch_screen.title(f"search {self.username.get()}")
         waitOrSearch_screen.geometry("300x250")
         Label(waitOrSearch_screen, text="search or wait", bg='#856ff8', width="300", height="2",
               font=("Calibri", 13)).pack()
@@ -300,7 +378,7 @@ class GUI(Frame):
 
     def waiting(self):
         self.waiting_screen = Toplevel(self.parent)
-        self.waiting_screen.title("wait")
+        self.waiting_screen.title(f"wait {self.username.get()}")
         self.waiting_screen.geometry("300x250")
         Label(self.waiting_screen, text="waiting for other users to join the app").pack()
         Button(self.waiting_screen, text="check", height="2", width="30",
@@ -312,7 +390,7 @@ class GUI(Frame):
         rcv.start()
 
         self.wait_screen = Toplevel(self.parent)
-        self.wait_screen.title("wait")
+        self.wait_screen.title(f"wait {self.username.get()}")
         self.wait_screen.geometry("300x250")
         Label(self.wait_screen, text="waiting for other user to contact you").pack()
         Label(self.wait_screen, text="").pack()
@@ -323,7 +401,7 @@ class GUI(Frame):
     def search(self):
         self.client.searchOrWait('OK')
         self.search_screen = Toplevel(self.parent)
-        self.search_screen.title("search")
+        self.search_screen.title(f"search {self.username.get()}")
         self.search_screen.geometry("300x250")
         Label(self.search_screen, text="Please enter details below to find user").pack()
         Label(self.search_screen, text="").pack()

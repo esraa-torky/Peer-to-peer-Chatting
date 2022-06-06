@@ -156,14 +156,28 @@ class Server:
                     self.onlineClients[self.onlineClients.index(client)]['state'] = 'searching'
                     self.search(client)
                     break
-
                 else:
                     self.onlineClients[self.onlineClients.index(client)]['state'] = 'waiting'
                     client['state'] = 'waiting'
+                    self.serverWait(client)
                     break
             else:
                 client['client'].send(b'nothing')
         LOGGER.info('loop is done')
+
+    def serverWait(self,client):
+
+        while True:
+            check = client['client'].recv(1024)
+            LOGGER.info(f'recived {check} from the user ')
+            # check = b'Certificate'
+            if check == b'Certificate':
+                name = client['name']
+                LOGGER.info(f'got certificate from client {name}')
+                self.checkCertificate(client)
+            else:
+                pass
+
 
     def search(self, client):
         while True:
@@ -182,20 +196,12 @@ class Server:
                 reciver['client'].send(data2.encode())
                 self.onlineClients[self.onlineClients.index(reciver)]['state'] = 'chatting'
                 # check the sender certificate
-                cert = reciver['client'].recv(4096)
-                LOGGER.info(f'Received cert from first user = {cert}')
-                userCertificate = x509.load_pem_x509_certificate(cert)
-                reciver['client'].send(self.checkCertificate(userCertificate))
-                # # check the reciver certificate
-                # cert = client['client'].recv(4096)
-                # userCertificate = x509.load_pem_x509_certificate(cert)
-                # client['client'].send(self.checkCertificate(userCertificate))
-
-                if client['client'].recv(self.bufferSize).decode('utf-8') == 'LOGOUT':
-                    reciver['client'].send(bytes('BACK', 'utf-8'))
-                    client['client'].close()
-                    self.onlineClients.pop(self.onlineClients.index(client))
-                    self.onlineClients[self.onlineClients.index(reciver)]['state'] = 'HERE'
+                self.serverWait(client)
+                # if client['client'].recv(self.bufferSize).decode('utf-8') == 'LOGOUT':
+                #     reciver['client'].send(bytes('BACK', 'utf-8'))
+                #     client['client'].close()
+                #     self.onlineClients.pop(self.onlineClients.index(client))
+                #     self.onlineClients[self.onlineClients.index(reciver)]['state'] = 'HERE'
             else:
                 data2 = json.dumps({"address": 'BUSY'})
                 client['client'].send(data2.encode())
@@ -229,9 +235,11 @@ class Server:
         f1.close()
         return certificate.public_bytes(serialization.Encoding.PEM)
 
-    def checkCertificate(self, certificate: Certificate):
+    def checkCertificate(self,client):
+        cert = client['client'].recv(4096)
+        LOGGER.info(f'Received cert from first user = {cert}')
+        certificate = x509.load_pem_x509_certificate(cert)
         pass_phrase = "SECURITY_HW_1".encode()
-
         f = open(f'Kserver-.pem', 'rb')
         cert_data = f.read()
         loaded = load_pem_private_key(data=cert_data, password=pass_phrase)
@@ -245,11 +253,13 @@ class Server:
                 padding.PKCS1v15(),
                 certificate.signature_hash_algorithm)
             LOGGER.info("Cert Valid")
-            return 'pass'
+            client['client'].send(bytes('pass', 'utf-8'))
+            # return 'pass'
         except:
             LOGGER.error("Cert Invalid")
+            client['client'].send('error in check')
             raise ValueError('Invalid Cert')
-            return 'wrong'
+            # return 'wrong'
 
 
 def main():

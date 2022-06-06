@@ -1,13 +1,6 @@
-import threading
-from threading import Thread
-from tkinter import *
-import socket
-import json
 import logging
 import colorama
 from Crypto.PublicKey import RSA
-from tinyec import registry
-import secrets
 from CustomFormatter import CustomFormatter
 
 LOG_PATH = 'p2pChat/logs'
@@ -57,6 +50,7 @@ def set_var(Key=None, hash_key=None, iv=None, nonce=None, master_secret=None):
         NONCE = nonce
     if master_secret is not None:
         MASTER_SECRET = master_secret
+    LOGGER.info(f'Key={Key}, hash_key={hash_key}, iv={iv} len {len(iv)}, nonce={nonce}, master_secret={master_secret}')
 
 def generateRSAKeys(userName):
     pass_phrase = "SECURITY_HW_1"
