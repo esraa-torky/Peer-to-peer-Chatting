@@ -13,7 +13,8 @@ from cryptography import x509
 from cryptography.x509 import Certificate
 
 from CustomFormatter import CustomFormatter
-from security import generateRSAKeys
+# from security import generateRSAKeys
+from p2pChat.security import Key
 
 LOG_PATH = 'p2pChat/logs'
 LOG_FILE_NAME = 'client'
@@ -49,7 +50,8 @@ class Server:
         # creating the TCP socket
         self.serverTCP = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serverTCP.bind((self.ipUDP, 1234))
-        generateRSAKeys('server')
+        self.Key = Key()
+        self.Key.generateRSAKeys('server')
 
     def readUsers(self):
         file = open('users.txt', 'r')

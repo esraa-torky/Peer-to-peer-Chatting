@@ -18,7 +18,8 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_pem_private_key
 
 from CustomFormatter import CustomFormatter
-from security import decrypt_msg, encrypt_msg, generateRSAKeys, set_var
+# from security import decrypt_msg, encrypt_msg, generateRSAKeys, set_var, Key
+from security import Key
 
 colorama.init()
 
@@ -41,7 +42,6 @@ ch.setLevel(logging.DEBUG)
 ch.setFormatter(CustomFormatter())
 LOGGER.addHandler(ch)
 #
-from security import generateRSAKeys
 
 
 class Client(Thread):
@@ -52,6 +52,7 @@ class Client(Thread):
         self.bufferSize = 1024
         self.serverUDP = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         self.pass_phrase = "SECURITY_HW_1"
+        self.Key = Key()
 
 
     def gettingRSAKeys(self, username):
@@ -62,7 +63,7 @@ class Client(Thread):
             encoded_key = open(f"K{username}-.pem", "rb").read()
             ka_private = load_pem_private_key(encoded_key, password=pass_phrase)
         else:
-            generateRSAKeys(username)
+            self.Key.generateRSAKeys(username)
             encoded_key = open(f"K{username}+.pem", "rb").read()
             ka_public = load_pem_public_key(encoded_key)
             encoded_key = open(f"K{username}-.pem", "rb").read()
@@ -150,7 +151,7 @@ class Client(Thread):
         while True:
             received_msg = self.reciverTCP.recv(self.bufferSize)
             digest = self.reciverTCP.recv(self.bufferSize)
-            msg = decrypt_msg(digest=digest, encrypted_data=received_msg)
+            msg = self.Key.decrypt_msg(digest=digest, encrypted_data=received_msg)
             m = name1 + ': ' + msg.decode()
             if m == 'LOGOUT':
                 print(m)
@@ -178,9 +179,9 @@ class Client(Thread):
                 self.serverTCP.recv(self.bufferSize)
                 break
             else:
-                data, digest = encrypt_msg(mesge)
-                self.client.send(bytes(data))
-                self.client.send(bytes(digest))
+                data, digest = self.Key.encrypt_msg(mesge)
+                self.client.send(data)
+                self.client.send(bytes(digest,'utf-8'))
             m = name2 + ': ' + self.client.recv(self.bufferSize).decode()
             self.saveMessages(name1 + '_' + name2, m)
             if m == 'LOGOUT':
@@ -232,7 +233,7 @@ class Client(Thread):
                     self.client.send(encreptedMastersSecret)
                     key = scrypt(masterSecret, nonce, 32, N=2 ** 14, r=8, p=1,num_keys=2)
                     LOGGER.info(f'key on sender side {key}')
-                    set_var(Key=key[0], hash_key=key[1], iv=bytes(masterSecret.split[:15],'utf-8'), nonce=nonce, master_secret=masterSecret)
+                    self.Key.set_var(Key=key[0], hash_key=key[1], iv=bytes(masterSecret[:16],'utf-8'), nonce=nonce[:16], master_secret=masterSecret)
                     self.chatS(name1,name2)
                 else :
                     pass
@@ -288,7 +289,7 @@ class Client(Thread):
                     LOGGER.info(f'received nonce is {decreptedMasterSecret} {type(decreptedMasterSecret)}')
                     key = scrypt(decreptedMasterSecret, nonce, 32, N=2 ** 14, r=8, p=1,num_keys=2)
                     LOGGER.info(f'key on receiver side {key}')
-                    set_var(Key=key[0], hash_key=key[1], iv=decreptedMasterSecret[:15], nonce=nonce,
+                    self.Key.set_var(Key=key[0], hash_key=key[1], iv=decreptedMasterSecret[:16], nonce=nonce[:16],
                             master_secret=str(decreptedMasterSecret))
 
                     self.chatR(name1,name2)
