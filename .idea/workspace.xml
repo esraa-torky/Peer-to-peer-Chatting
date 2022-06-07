@@ -162,7 +162,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1654529496752</updated>
-      <workItem from="1654529503755" duration="19551000" />
+      <workItem from="1654529503755" duration="22732000" />
     </task>
     <servers />
   </component>
@@ -170,8 +170,8 @@
     <option name="version" value="3" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/Peer_to_peer_Chatting$Client.coverage" NAME="Client Coverage Results" MODIFIED="1654549196251" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/p2pChat" />
+    <SUITE FILE_PATH="coverage/Peer_to_peer_Chatting$Client.coverage" NAME="Client Coverage Results" MODIFIED="1654595228556" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/p2pChat" />
     <SUITE FILE_PATH="coverage/Peer_to_peer_Chatting$security.coverage" NAME="security Coverage Results" MODIFIED="1654538326124" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/p2pChat" />
-    <SUITE FILE_PATH="coverage/Peer_to_peer_Chatting$Registry.coverage" NAME="Registry Coverage Results" MODIFIED="1654549188813" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/p2pChat" />
+    <SUITE FILE_PATH="coverage/Peer_to_peer_Chatting$Registry.coverage" NAME="Registry Coverage Results" MODIFIED="1654595225383" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/p2pChat" />
   </component>
 </project>

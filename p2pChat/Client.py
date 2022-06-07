@@ -53,6 +53,7 @@ class Client(Thread):
         self.serverUDP = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
         self.pass_phrase = "SECURITY_HW_1"
         self.Key = Key()
+        self.listOfNonces = []
 
 
     def gettingRSAKeys(self, username):
@@ -120,9 +121,6 @@ class Client(Thread):
     def searchOrWait(self, check):
         self.serverTCP.send(bytes(check, 'utf-8'))
 
-    # def sendCertificate(self):
-    #     self.serverTCP.send(self.certificate.public_bytes(serialization.Encoding.PEM))
-    #     self.serverTCP.
 
     def search(self, name):
         self.serverTCP.send(bytes(name, 'utf-8'))
@@ -197,50 +195,53 @@ class Client(Thread):
         self.client.send(bytes('hello', 'utf-8'))
         self.client.send(self.certificate.public_bytes(serialization.Encoding.PEM))
         nonce = self.client.recv(self.bufferSize)
-        LOGGER.info(f'nonce is {nonce}')
-        userCertificate = x509.load_pem_x509_certificate(self.client.recv(self.bufferSize))
-        LOGGER.info(f'receive certificate is {userCertificate}')
-        while True:
-            self.serverTCP.send(bytes('Certificate', 'utf-8'))
-            self.serverTCP.send(userCertificate.public_bytes(serialization.Encoding.PEM))
-            check = self.serverTCP.recv(self.bufferSize)
-            if check.decode() == 'pass':
-                print('certificate check done for both sides')
-                userPublicKey = userCertificate.public_key()
-                LOGGER.info('done with sender')
-                # send the nonce again
-                encreptedNonce = userPublicKey.encrypt(nonce,
-                            padding.OAEP(
-                                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                                algorithm=hashes.SHA256(),
-                                label=None
-                            ))
+        if nonce in self.listOfNonces :
+            LOGGER.info('replay attack')
+        else:
+            LOGGER.info(f'nonce is {nonce}')
+            userCertificate = x509.load_pem_x509_certificate(self.client.recv(self.bufferSize))
+            LOGGER.info(f'receive certificate is {userCertificate}')
+            while True:
+                self.serverTCP.send(bytes('Certificate', 'utf-8'))
+                self.serverTCP.send(userCertificate.public_bytes(serialization.Encoding.PEM))
+                check = self.serverTCP.recv(self.bufferSize)
+                if check.decode() == 'pass':
+                    print('certificate check done for both sides')
+                    userPublicKey = userCertificate.public_key()
+                    LOGGER.info('done with sender')
+                    # send the nonce again
+                    encreptedNonce = userPublicKey.encrypt(nonce,
+                                padding.OAEP(
+                                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                    algorithm=hashes.SHA256(),
+                                    label=None
+                                ))
 
-                self.client.send(encreptedNonce)
-                ack = self.client.recv(self.bufferSize).decode()
-                LOGGER.info(f'ACK is {ack}')
-                if ack == 'true':
-                    masterSecret = uuid.uuid4().hex
-                    encreptedMastersSecret = userPublicKey.encrypt(bytes(masterSecret,'utf-8'),
-                                                           padding.OAEP(
-                                                               mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                                                               algorithm=hashes.SHA256(),
-                                                               label=None
-                                                           ))
-                    LOGGER.info(f'master secret {masterSecret}')
-                    LOGGER.info(f'master secret encrepted {encreptedMastersSecret}')
+                    self.client.send(encreptedNonce)
+                    self.listOfNonces.append(nonce)
+                    ack = self.client.recv(self.bufferSize).decode()
+                    LOGGER.info(f'ACK is {ack}')
+                    if ack == 'true':
+                        masterSecret = uuid.uuid4().hex
+                        encreptedMastersSecret = userPublicKey.encrypt(bytes(masterSecret,'utf-8'),
+                                                               padding.OAEP(
+                                                                   mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                                                   algorithm=hashes.SHA256(),
+                                                                   label=None
+                                                               ))
+                        LOGGER.info(f'master secret {masterSecret}')
+                        LOGGER.info(f'master secret encrepted {encreptedMastersSecret}')
+                        self.client.send(encreptedMastersSecret)
+                        key = scrypt(masterSecret, nonce, 32, N=2 ** 14, r=8, p=1,num_keys=2)
+                        LOGGER.info(f'key on sender side {key}')
+                        self.Key.set_var(Key=key[0], hash_key=key[1], iv=bytes(masterSecret[:16],'utf-8'), nonce=nonce[:16], master_secret=masterSecret)
+                        self.chatS(name1,name2)
+                    else :
+                        pass
+                    break
 
-                    self.client.send(encreptedMastersSecret)
-                    key = scrypt(masterSecret, nonce, 32, N=2 ** 14, r=8, p=1,num_keys=2)
-                    LOGGER.info(f'key on sender side {key}')
-                    self.Key.set_var(Key=key[0], hash_key=key[1], iv=bytes(masterSecret[:16],'utf-8'), nonce=nonce[:16], master_secret=masterSecret)
-                    self.chatS(name1,name2)
-                else :
-                    pass
-                break
-
-            else:
-                LOGGER.info('somthing wrong with the reciver certificate')
+                else:
+                    LOGGER.info('somthing wrong with the reciver certificate')
                 self.client.send('wrong certificate')
 
 
@@ -301,8 +302,6 @@ class Client(Thread):
             else:
                 LOGGER.info('Something wrong')
                 self.reciverTCP.send('wrong certificate')
-                # nonce = self.client.recv(self.bufferSize)
-                # userCertificate = x509.load_pem_x509_certificate(self.client.recv(self.bufferSize))
 
 
 class GUI(Frame):
@@ -455,7 +454,6 @@ class GUI(Frame):
             self.search_screen.destroy()
             LOGGER.info(f'{self.username} - i am entering the handshaking')
             state = self.client.handShakingServer(self.username.get(), msgFromServer['name'])
-            # state = self.client.chatS(self.username.get(), msgFromServer['name'])
             if state == 'LOGOUT':
                 self.waiting()
 
@@ -466,7 +464,6 @@ class GUI(Frame):
             self.wait_screen.destroy()
             LOGGER.info('receiver entered the handshaking')
             state = self.client.handShakingClient(msgFromServer['name'], self.username.get())
-            # state=self.client.chatR(msgFromServer['name'], self.username.get())
             if state == 'LOGOUT':
                 self.waiting()
 

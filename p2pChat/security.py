@@ -78,7 +78,8 @@ class Key():
     def verify_mac(self,data, key, nonce, mac_digest):
         LOGGER.info("MAC verifying")
         LOGGER.info(f'data is {data} type {type(data)}')
-        mac_verify = Poly1305.new(data=str(data).encode("utf8"), key=key, nonce=nonce,
+        dataA=bytearray()
+        mac_verify = Poly1305.new(data=data, key=key, nonce= bytes (nonce,'utf-8'),
                                   cipher=AES)
         try:
             mac_verify.hexverify(mac_digest)
